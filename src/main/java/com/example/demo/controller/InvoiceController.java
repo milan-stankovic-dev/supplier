@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -18,7 +21,7 @@ public record InvoiceController(InvoiceService service) {
 
     @PostMapping("/process")
     public ResponseEntity<InvoiceDTO> serviceInvoice(
-            @RequestBody InvoiceDTO request) {
+            @RequestBody InvoiceDTO request) throws ParserConfigurationException, IOException, SAXException {
 
         log.info("RECEIVED: " + request);
         return ResponseEntity.ok(service.serviceInvoices(request));
