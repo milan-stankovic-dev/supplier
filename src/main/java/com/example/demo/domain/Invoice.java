@@ -7,6 +7,7 @@ import jakarta.validation.constraints.PastOrPresent;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLInsert;
 
 import java.time.LocalDate;
 
@@ -15,18 +16,17 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "tbl_invoice")
+@SQLInsert(sql = "INSERT INTO tbl_invoice (contents, received_at, serviced_at) " +
+        "VALUES (XMLPARSE(DOCUMENT ?), ?, ?)")
 public class Invoice {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
     @Column(nullable = false,
             columnDefinition = "XML")
     @NotEmpty
     private String contents;
-
-    @Column(nullable = false)
-    private boolean serviced;
 
     @NotNull
     @PastOrPresent

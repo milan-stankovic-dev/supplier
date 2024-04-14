@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.NaturalId;
 
 import java.math.BigDecimal;
 
@@ -22,12 +23,22 @@ public class Product {
     private long id;
 
     @NotEmpty(message = "You must input a product name")
+    @NaturalId
+    @Column(name = "product_name")
     private String productName;
 
     @Min(value = 0, message = "You may not have less than 0 products.")
+    @Column(name = "current_stock")
     private int currentStock;
 
     @DecimalMin(value = "0", inclusive = false)
     @DecimalMax(value = "1000000")
     private BigDecimal price;
+
+    public void increaseStockBy(int amount) {
+        this.currentStock += amount;
+    }
+    public void decreaseStockBy(int amount) {
+        this.currentStock -= amount;
+    }
 }

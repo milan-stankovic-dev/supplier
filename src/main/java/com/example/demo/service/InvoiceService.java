@@ -1,29 +1,94 @@
 package com.example.demo.service;
 
 import com.example.demo.constants.XMLConstants;
-import com.example.demo.dto.InvoiceDTO;
+import com.example.demo.domain.Invoice;
+import com.example.demo.domain.Product;
+import com.example.demo.exception.NonExistingProductException;
+import com.example.demo.exception.UnderstockedProductException;
 import com.example.demo.repository.InvoiceRepository;
+import com.example.demo.repository.ProductRepository;
 import com.example.demo.validator.XMLValidator;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import lombok.extern.java.Log;
 import lombok.val;
+import org.example.XMLParser;
+import org.example.dto.OrderRequest;
+import org.example.dto.OrderResponse;
 import org.springframework.stereotype.Service;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.Map;
 
 @Service
-public record InvoiceService(InvoiceRepository repository,
+@Log
+public record InvoiceService(InvoiceRepository invoiceRepository,
+                             ProductRepository productRepository,
                              XMLValidator validator) {
-    public InvoiceDTO serviceInvoices(InvoiceDTO request) throws ParserConfigurationException, IOException, SAXException {
-        //TODO: implement business logic
-        for(val invoice : request.XMLContent()) {
+    public OrderResponse serviceInvoices(OrderRequest request)
+            throws ParserConfigurationException, IOException, SAXException {
+
+            val invoice = request.XMLContents();
+
             validator.XMLisWellFormed(invoice);
             validator.XMLIsValid(invoice, XMLConstants.invoiceSchema);
+
+            val savedInvoice = insertInvoice(invoice);
+            val parser = XMLParser.getInstance();
+            final Map<String, Integer> items = parser
+                    .parseAllNamed(invoice, "item");
+            for (Map.Entry<String, Integer> entry : items.entrySet()) {
+                final String key = entry.getKey();
+                final Integer value = entry.getValue();
+                log.info("Key: " + key + ", Value: " + value);
+            }
+            try {
+                this.decreaseProductStockForAll(items);
+            } catch (NonExistingProductException | UnderstockedProductException e) {
+                return new OrderResponse(request.id(), request.XMLContents(), false,
+                        false);
+            }
+
+        invoiceRepository.updateServicedAtById(savedInvoice.getId(), LocalDate.now());
+        return new OrderResponse(request.id(), request.XMLContents(),
+                true, true);
+    }
+
+    private Invoice insertInvoice(@NotNull @NotEmpty String contents) {
+        val invoiceToSave =
+                new Invoice(null, contents,
+                        LocalDate.now(),
+                        null);
+
+        return invoiceRepository.save(invoiceToSave);
+    }
+
+    private void decreaseProductStockForAll(
+            @NotNull Map<String, Integer> backlog)
+            throws NonExistingProductException, UnderstockedProductException {
+
+        for(final Map.Entry<String, Integer> entry: backlog.entrySet()) {
+            var wantedProduct = productRepository
+                    .findByProductName(entry.getKey())
+                    .orElseThrow(()-> new NonExistingProductException(
+                            "Product with name " + entry.getKey() +
+                                    " does not exist."));
+            val wantedAmount = entry.getValue();
+            checkForStock(wantedProduct, wantedAmount);
+            wantedProduct.decreaseStockBy(wantedAmount);
+            productRepository.save(wantedProduct);
         }
+    }
 
+    private void checkForStock(Product p, int orderAmount)
+            throws UnderstockedProductException {
 
-        return request;
+        if(p.getCurrentStock() - orderAmount < 0)
+            throw new UnderstockedProductException(
+                    "We currently do not have enough products. Try again later");
     }
 
 }
