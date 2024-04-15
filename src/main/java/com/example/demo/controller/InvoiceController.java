@@ -2,7 +2,9 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.InvoiceDTO;
 import com.example.demo.dto.InvoiceResponseDTO;
+import com.example.demo.dto.ProductReplenishDTO;
 import com.example.demo.service.InvoiceService;
+import jakarta.validation.Valid;
 import lombok.extern.java.Log;
 import org.example.dto.OrderRequest;
 import org.example.dto.OrderResponse;
@@ -24,9 +26,11 @@ public record InvoiceController(InvoiceService service) {
 
     @PostMapping("/process")
     public ResponseEntity<OrderResponse> serviceInvoice(
-            @RequestBody OrderRequest request) throws ParserConfigurationException, IOException, SAXException {
+            @RequestBody @Valid OrderRequest request) throws ParserConfigurationException, IOException, SAXException {
 
-        log.info("RECEIVED: " + request);
+        log.info("RECEIVED INVOICE REQUEST: " + request);
         return ResponseEntity.ok(service.serviceInvoices(request));
     }
+
+
 }

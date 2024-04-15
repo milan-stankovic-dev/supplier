@@ -1,11 +1,14 @@
 package com.example.demo.service;
 
+import com.example.demo.converter.impl.ProductReplenishConverter;
 import com.example.demo.domain.Invoice;
 import com.example.demo.domain.Product;
+import com.example.demo.dto.ProductReplenishDTO;
 import com.example.demo.exception.NonExistingProductException;
 import com.example.demo.exception.UnderstockedProductException;
 import com.example.demo.repository.InvoiceRepository;
 import com.example.demo.repository.ProductRepository;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.java.Log;
@@ -26,7 +29,8 @@ import java.util.Map;
 @Service
 @Log
 public record InvoiceService(InvoiceRepository invoiceRepository,
-                             ProductRepository productRepository) {
+                             ProductRepository productRepository,
+                             ProductReplenishConverter converter) {
     public OrderResponse serviceInvoices(OrderRequest request)
             throws ParserConfigurationException, IOException, SAXException {
 
