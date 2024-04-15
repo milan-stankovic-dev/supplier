@@ -1,20 +1,20 @@
 package com.example.demo.service;
 
-import com.example.demo.constants.XMLConstants;
 import com.example.demo.domain.Invoice;
 import com.example.demo.domain.Product;
 import com.example.demo.exception.NonExistingProductException;
 import com.example.demo.exception.UnderstockedProductException;
 import com.example.demo.repository.InvoiceRepository;
 import com.example.demo.repository.ProductRepository;
-import com.example.demo.validator.XMLValidator;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.java.Log;
 import lombok.val;
-import org.example.XMLParser;
+import org.example.constants.XMLConstants;
 import org.example.dto.OrderRequest;
 import org.example.dto.OrderResponse;
+import org.example.util.XMLParser;
+import org.example.validator.XMLValidator;
 import org.springframework.stereotype.Service;
 import org.xml.sax.SAXException;
 
@@ -26,15 +26,14 @@ import java.util.Map;
 @Service
 @Log
 public record InvoiceService(InvoiceRepository invoiceRepository,
-                             ProductRepository productRepository,
-                             XMLValidator validator) {
+                             ProductRepository productRepository) {
     public OrderResponse serviceInvoices(OrderRequest request)
             throws ParserConfigurationException, IOException, SAXException {
 
             val invoice = request.XMLContents();
+            val validator = XMLValidator.getInstance();
 
-            validator.XMLisWellFormed(invoice);
-            validator.XMLIsValid(invoice, XMLConstants.invoiceSchema);
+            validator.validateXMLFully(invoice, XMLConstants.invoiceSchema);
 
             val savedInvoice = insertInvoice(invoice);
             val parser = XMLParser.getInstance();
