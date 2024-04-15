@@ -43,11 +43,8 @@ public record InvoiceService(InvoiceRepository invoiceRepository,
             val parser = XMLParser.getInstance();
             final Map<String, Integer> items = parser
                     .parseAllNamed(invoice, "item");
-            for (Map.Entry<String, Integer> entry : items.entrySet()) {
-                final String key = entry.getKey();
-                final Integer value = entry.getValue();
-                log.info("Key: " + key + ", Value: " + value);
-            }
+            logAllItems(items);
+
             try {
                 this.decreaseProductStockForAll(items);
             } catch (NonExistingProductException | UnderstockedProductException e) {
@@ -67,6 +64,10 @@ public record InvoiceService(InvoiceRepository invoiceRepository,
                         null);
 
         return invoiceRepository.save(invoiceToSave);
+    }
+
+    private void logAllItems(Map<String, Integer> items) {
+        items.forEach((key, value) -> log.info("Key: " + key + ", Value: " + value));
     }
 
     private void decreaseProductStockForAll(
@@ -89,10 +90,13 @@ public record InvoiceService(InvoiceRepository invoiceRepository,
     private void checkForStock(Product p, int orderAmount)
             throws UnderstockedProductException {
 
-        if(p.getCurrentStock() - orderAmount < 0)
+        if (p.getCurrentStock() - orderAmount < 0) {
+            log.warning("Stock for product '%s' fully depleted"
+                    .formatted(p.getProductName()));
+
             throw new UnderstockedProductException(
                     "We currently do not have enough products. Try again later");
+        }
     }
-
 }
 
