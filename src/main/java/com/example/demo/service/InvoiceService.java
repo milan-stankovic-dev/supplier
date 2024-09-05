@@ -12,6 +12,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.example.constants.XMLConstants;
 import org.example.dto.OrderRequest;
@@ -25,29 +26,35 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+
+import static org.example.constants.XMLConstants.INVOICE_SCHEMA;
 
 @Service
-@Log
+@Slf4j
 public record InvoiceService(InvoiceRepository invoiceRepository,
                              ProductRepository productRepository,
-                             ProductReplenishConverter converter) {
+                             ProductReplenishConverter converter,
+                             XMLValidator validator,
+                             XMLParser parser) {
+
     public OrderResponse serviceInvoices(OrderRequest request)
             throws ParserConfigurationException, IOException, SAXException {
 
             val invoice = request.XMLContents();
-            val validator = XMLValidator.getInstance();
 
-            validator.validateXMLFully(invoice, XMLConstants.invoiceSchema);
+            validator.validateXMLFully(invoice, INVOICE_SCHEMA);
 
             val savedInvoice = insertInvoice(invoice);
-            val parser = XMLParser.getInstance();
-            final Map<String, Integer> items = parser
-                    .parseAllNamed(invoice, "item");
+            final Map<UUID, Integer> items = parser
+                    .parseAllItems(invoice);
             logAllItems(items);
 
             try {
                 this.decreaseProductStockForAll(items);
             } catch (NonExistingProductException | UnderstockedProductException e) {
+                log.error("ERROR OCCURRED DURING PROCESSING REQUEST {}", e.getMessage());
                 return new OrderResponse(request.id(), request.XMLContents(), false,
                         false);
             }
@@ -66,21 +73,22 @@ public record InvoiceService(InvoiceRepository invoiceRepository,
         return invoiceRepository.save(invoiceToSave);
     }
 
-    private void logAllItems(Map<String, Integer> items) {
+    private void logAllItems(Map<UUID, Integer> items) {
         items.forEach((key, value) -> log.info("Key: " + key + ", Value: " + value));
     }
 
     private void decreaseProductStockForAll(
-            @NotNull Map<String, Integer> backlog)
+            @NotNull Map<UUID, Integer> backlog)
             throws NonExistingProductException, UnderstockedProductException {
 
-        for(final Map.Entry<String, Integer> entry: backlog.entrySet()) {
+        for(val entry : backlog.entrySet()) {
             var wantedProduct = productRepository
-                    .findByProductName(entry.getKey())
+                    .findByCode(entry.getKey())
                     .orElseThrow(()-> new NonExistingProductException(
-                            "Product with name " + entry.getKey() +
+                            "Product with code " + entry.getKey() +
                                     " does not exist."));
-            val wantedAmount = entry.getValue();
+
+            final int wantedAmount = entry.getValue();
             checkForStock(wantedProduct, wantedAmount);
             wantedProduct.decreaseStockBy(wantedAmount);
             productRepository.save(wantedProduct);
@@ -91,8 +99,7 @@ public record InvoiceService(InvoiceRepository invoiceRepository,
             throws UnderstockedProductException {
 
         if (p.getCurrentStock() - orderAmount < 0) {
-            log.warning("Stock for product '%s' fully depleted"
-                    .formatted(p.getProductName()));
+            log.warn("Stock for product {} fully depleted" ,p.getProductName());
 
             throw new UnderstockedProductException(
                     "We currently do not have enough products. Try again later");

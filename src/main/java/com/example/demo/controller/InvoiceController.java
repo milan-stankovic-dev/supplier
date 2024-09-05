@@ -1,8 +1,5 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.InvoiceDTO;
-import com.example.demo.dto.InvoiceResponseDTO;
-import com.example.demo.dto.ProductReplenishDTO;
 import com.example.demo.service.InvoiceService;
 import jakarta.validation.Valid;
 import lombok.extern.java.Log;
@@ -17,7 +14,6 @@ import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
-import java.util.List;
 
 @RestController
 @RequestMapping("/invoice")

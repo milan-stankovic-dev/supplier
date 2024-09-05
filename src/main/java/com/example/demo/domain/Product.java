@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.NaturalId;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Data
 @Entity
@@ -25,7 +26,6 @@ public class Product {
     private Long id;
 
     @NotEmpty(message = "You must input a product name")
-    @NaturalId
     @Column(name = "product_name")
     private String productName;
 
@@ -37,10 +37,11 @@ public class Product {
     @DecimalMax(value = "1000000")
     private BigDecimal price;
 
-    public void increaseStockBy(int amount) {
-        this.currentStock += amount;
-    }
-    public void decreaseStockBy(int amount) {
-        this.currentStock -= amount;
-    }
+    @NaturalId
+    @Column(unique = true, updatable = false, nullable = false)
+    @Builder.Default
+    private UUID code = UUID.randomUUID();
+
+    public void increaseStockBy(int amount) { this.currentStock += amount; }
+    public void decreaseStockBy(int amount) { this.currentStock -= amount; }
 }
